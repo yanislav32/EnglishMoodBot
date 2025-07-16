@@ -1,5 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using System.IO;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Configuration;
 
 namespace EnglishMoodBot.Data
 {
@@ -10,15 +13,29 @@ namespace EnglishMoodBot.Data
     {
         public BotDbContext CreateDbContext(string[] args)
         {
-            var builder = new DbContextOptionsBuilder<BotDbContext>();
+            // Получаем текущее окружение (если не задано, считается Production)
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
 
-            // жёстко вписываем тут строку подключения OR читаем из ENV:
-            // var conn = Environment.GetEnvironmentVariable("BOTDB__ConnectionStrings__BotDb")
-            var conn = "Host=localhost;Port=5432;Database=botdb;Username=botuser;Password=Alan98325";
+            // Строим IConfiguration так же, как в Program.cs
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false)
+                .AddJsonFile($"appsettings.{env}.json", optional: true)
+                .AddUserSecrets<BotDbContextFactory>(optional: true)
+                .AddEnvironmentVariables()
+                .Build();
 
-            builder.UseNpgsql(conn);
+            // Берём строку подключения из Configuration
+            var conn = config.GetConnectionString("BotDb")
+                       ?? throw new InvalidOperationException(
+                           "ConnectionStrings:BotDb missing in configuration");
 
-            return new BotDbContext(builder.Options);
+            // Настраиваем DbContextOptions
+            var options = new DbContextOptionsBuilder<BotDbContext>()
+                .UseNpgsql(conn)
+                .Options;
+
+            return new BotDbContext(options);
         }
     }
 }

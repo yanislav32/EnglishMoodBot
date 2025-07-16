@@ -4,11 +4,7 @@
             "commandName": "Project",
             "dotnetRunMessages": true,
             "launchBrowser": false,
-            "applicationUrl": "http://localhost:5000",
-            "environmentVariables": {
-                "ASPNETCORE_ENVIRONMENT": "Development",
-                "TG_TOKEN": "8081496102:AAHxLoJyQeVgDg1ot-M1On-uDTJeuTyUZ14"
-            }
+            "applicationUrl": "http://localhost:5000"
         }
     }
 }
