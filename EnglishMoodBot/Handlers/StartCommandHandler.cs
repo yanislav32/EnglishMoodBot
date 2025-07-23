@@ -1,12 +1,17 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using System.Threading;
 using EnglishMoodBot.Data;
 using EnglishMoodBot.Services;
 using EnglishMoodBot.State;
 using EnglishMoodBot.State.Models;
+using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace EnglishMoodBot.Handlers
 {
@@ -15,13 +20,20 @@ namespace EnglishMoodBot.Handlers
         private readonly Dictionary<QuizStep, (string Q, string[] Opts)> _map;
         private readonly ChecklistService _chk;   // понадобится, если решите сдвигать дальше
         private readonly BotDbContext _db;
+        private readonly IEnumerable<long> _adminChatIds;
 
         public StartCommandHandler(Dictionary<QuizStep, (string, string[])> map,
-                                   ChecklistService chk, BotDbContext db)
+                                   ChecklistService chk, BotDbContext db, IConfiguration config)
         {
             _map = map;
             _chk = chk;
             _db = db;
+
+            var csv = config["AdminChatIds"]
+                       ?? throw new InvalidOperationException("AdminChatIds missing");
+            _adminChatIds = csv
+                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                 .Select(s => long.Parse(s.Trim()));
         }
 
         public bool CanHandle(Update u, UserState _) => u.Message?.Text == "/start";
@@ -50,17 +62,35 @@ namespace EnglishMoodBot.Handlers
                     FirstSeen = DateTime.UtcNow
                 };
                 _db.Users.Add(user);
-                string userTgLink = "https://t.me/{user.UserName}";
+
+                string userTgLink = $"https://t.me/{user.UserName}";
                 var msgNewUser =
                                 $"<b>Новый пользователь!</b>\n" +
                                 $"Username: <a href=\"https://t.me/{user.UserName}\">@{user.UserName}</a>\n" +
                                 $"Id: <code>{user.ChatId}</code>\n" +
                                 $"Дата подключения: {user.FirstSeen:dd-MM-yyyy}\n" +
                                 $"Время подключения: {user.FirstSeen:HH:mm:ss}";
-                long adminChatId = 528017102;
-                await bot.SendMessage(adminChatId, msgNewUser, parseMode: ParseMode.Html);
-                await bot.SendMessage(406865885, msgNewUser, parseMode: ParseMode.Html);
-                
+
+                // Отправляем всем админам
+                foreach (var adminId in _adminChatIds)
+                {
+                    try
+                    {
+                        await bot.SendMessage(
+                            chatId: adminId,
+                            text: msgNewUser,
+                            parseMode: ParseMode.Html,
+                            cancellationToken: ct
+                        );
+                    }
+                    catch (Telegram.Bot.Exceptions.ApiRequestException ex)
+                        when (ex.ErrorCode == 403)
+                    {
+                        // Пользователь не разрешил боту писать себе.
+                        // Здесь можно сохранить adminId в базе или логах
+                        Console.WriteLine($"Не могу отправить админу {adminId}: {ex.Message}");
+                    }
+                }
             }
             else if (user.FirstSeen == default)
             {
@@ -71,16 +101,16 @@ namespace EnglishMoodBot.Handlers
 
             // 1) приветственный текст
             const string welcome = """
-<b>Добро пожаловать в Sherlock School!</b>
+            <b>Добро пожаловать в Sherlock School!</b>
 
-Ты оказался(лась) в месте, где английский перестаёт быть школьным предметом и становится твоим инструментом — для работы, путешествий, общения, контента и новых возможностей.
+            Ты оказался(лась) в месте, где английский перестаёт быть школьным предметом и становится твоим инструментом — для работы, путешествий, общения, контента и новых возможностей.
 
-<i><u>Sherlock School — это:</u></i>
+            <i><u>Sherlock School — это:</u></i>
 
-⚡️ Школа, где учат не зазубривать, а понимать язык
-⚡️ Эксперты, которые помогают видеть разницу между учебником и живой речью
-⚡️ Сообщество, где можно практиковаться, ошибаться, задавать вопросы и расти
-""";
+            ⚡️ Школа, где учат не зазубривать, а понимать язык
+            ⚡️ Эксперты, которые помогают видеть разницу между учебником и живой речью
+            ⚡️ Сообщество, где можно практиковаться, ошибаться, задавать вопросы и расти
+            """;
             var photo = Path.Combine(AppContext.BaseDirectory, "Assets", "Photo.jpeg");
             await bot.SendPhoto(
                 chat,

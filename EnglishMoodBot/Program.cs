@@ -29,8 +29,8 @@ var host = Host.CreateDefaultBuilder(args)
         var token = cfg["TG_TOKEN"]                         // User Secrets / appsettings
                  ?? Environment.GetEnvironmentVariable("TG_TOKEN") // env-var
                  ?? throw new InvalidOperationException("TG_TOKEN missing");
-
         services.AddSingleton<ITelegramBotClient>(new TelegramBotClient(token));
+
 
         services.AddSingleton<StateService>();
         services.AddSingleton<ChecklistService>();
