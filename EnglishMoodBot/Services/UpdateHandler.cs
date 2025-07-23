@@ -57,7 +57,7 @@ namespace EnglishMoodBot.Services
             {
                 // проверим, есть ли такое текстовое значение в карте кнопок
                 var opts = QuizHandler.DefaultMap[state.Step].Opts;
-                if (!opts.Any(o => o.Trim().Equals(msg.Text.Trim(), StringComparison.OrdinalIgnoreCase)))
+                if (!opts.Any(o => o.Trim().Equals(msg.Text.Trim(), StringComparison.OrdinalIgnoreCase)) && msg.Text != "/start")
                     return; // не совпало ни с одной кнопкой → игнорируем
             }
 

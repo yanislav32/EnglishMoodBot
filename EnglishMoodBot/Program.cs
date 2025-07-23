@@ -57,6 +57,25 @@ using (var scope = host.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
     db.Database.Migrate();
+
+    // сюда же помещаем "SetMyCommandsAsync"
+    var bot = scope.ServiceProvider.GetRequiredService<ITelegramBotClient>();
+
+    var commands = new[]
+    {
+        new Telegram.Bot.Types.BotCommand { Command = "start", Description = "Запустить бота" }
+        // сюда можно добавить любые другие ваши команды
+    };
+
+    await bot.SetMyCommands(
+        commands: commands,
+        scope: new Telegram.Bot.Types.BotCommandScopeDefault()
+    );
+    // 2) Делаем кнопку меню, которая в любой момент разворачивает список команд
+    await bot.SetChatMenuButton(
+        menuButton: new Telegram.Bot.Types.MenuButtonCommands(),
+        cancellationToken: CancellationToken.None);
 }
 
 await host.RunAsync();
+

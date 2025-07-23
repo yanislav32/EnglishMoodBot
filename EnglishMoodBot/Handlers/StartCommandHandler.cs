@@ -50,6 +50,17 @@ namespace EnglishMoodBot.Handlers
                     FirstSeen = DateTime.UtcNow
                 };
                 _db.Users.Add(user);
+                string userTgLink = "https://t.me/{user.UserName}";
+                var msgNewUser =
+                                $"<b>Новый пользователь!</b>\n" +
+                                $"Username: <a href=\"https://t.me/{user.UserName}\">@{user.UserName}</a>\n" +
+                                $"Id: <code>{user.ChatId}</code>\n" +
+                                $"Дата подключения: {user.FirstSeen:dd-MM-yyyy}\n" +
+                                $"Время подключения: {user.FirstSeen:HH:mm:ss}";
+                long adminChatId = 528017102;
+                await bot.SendMessage(adminChatId, msgNewUser, parseMode: ParseMode.Html);
+                await bot.SendMessage(406865885, msgNewUser, parseMode: ParseMode.Html);
+                
             }
             else if (user.FirstSeen == default)
             {
@@ -70,21 +81,29 @@ namespace EnglishMoodBot.Handlers
 ⚡️ Эксперты, которые помогают видеть разницу между учебником и живой речью
 ⚡️ Сообщество, где можно практиковаться, ошибаться, задавать вопросы и расти
 """;
-            await bot.SendMessage(chat, welcome, parseMode: ParseMode.Html, cancellationToken: ct);
+            var photo = Path.Combine(AppContext.BaseDirectory, "Assets", "Photo.jpeg");
+            await bot.SendPhoto(
+                chat,
+                InputFile.FromStream(File.OpenRead(photo), "Photo.jpeg"),
+                welcome, 
+                parseMode: ParseMode.Html, 
+                cancellationToken: ct);
 
             // 2) PDF-презентация + пояснение
             const string more = """
-<b>Мы верим</b>, что английский — это не уровень в сертификате, а часть жизни. Здесь учат понимать, а не просто переводить. Помогают не бояться ошибок. Показывают, как звучит язык вне учебных примеров — в песнях, фильмах, мемах, разговорах.
+<b>Мы верим, что английский — это не уровень в сертификате</b>, а часть жизни. Здесь учат понимать, а не просто переводить. Помогают не бояться ошибок. Показывают, как звучит язык вне учебных примеров — в песнях, фильмах, мемах, разговорах.
 
 У нас ты найдёшь пространство, где тебя слышат, поддерживают и подбирают обучение под твой ритм. Без гонки, без давления, зато с юмором, пользой и удовольствием. <b>Добро пожаловать!</b>
 """;
-            var pdf = Path.Combine(AppContext.BaseDirectory, "Assets", "Presentation.pdf");
+            /*var pdf = Path.Combine(AppContext.BaseDirectory, "Assets", "Presentation.pdf");
             await bot.SendDocument(
                 chat,
                 InputFile.FromStream(File.OpenRead(pdf), "Presentation.pdf"),
                 more,
                 parseMode: ParseMode.Html,
                 cancellationToken: ct);
+            */
+            await bot.SendMessage(chat,more, parseMode: ParseMode.Html, cancellationToken: ct);
 
             // 3) voice
             var voice = Path.Combine(AppContext.BaseDirectory, "Assets", "welcome.ogg");
